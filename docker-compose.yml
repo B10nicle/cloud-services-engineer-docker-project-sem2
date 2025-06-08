@@ -1,0 +1,65 @@
+version: '3.9'
+
+networks:
+  app:
+    driver: bridge
+
+services:
+  backend:
+    container_name: backend
+    restart: on-failure
+    cap_add:
+      - NET_BIND_SERVICE
+    cap_drop:
+      - ALL
+    build:
+      context: ./backend/
+    ports:
+      - "8081:8081"
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 20s
+      retries: 5
+      timeout: 15s
+      start_period: 10s
+    deploy:
+      resources:
+        reservations:
+          memory: 256M
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  frontend:
+    container_name: frontend
+    restart: on-failure
+    build:
+      context: ./frontend/
+    cap_add:
+      - NET_BIND_SERVICE
+    depends_on:
+      api-service:
+        condition: service_healthy
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    cap_drop:
+      - ALL
+    ports:
+      - "80:80"
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 20s
+      retries: 5
+      timeout: 15s
+      start_period: 10s
+    deploy:
+      resources:
+        reservations:
+          memory: 128M
+        limits:
+          memory: 256M
+          cpus: '0.25'
